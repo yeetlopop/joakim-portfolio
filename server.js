@@ -8,9 +8,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 
-// ==========================
-// MIDDLEWARE
-// ==========================
+// =======================
+// Middleware
+// =======================
+
+app.set("trust proxy", true);
 
 app.use(express.json());
 
@@ -18,34 +20,20 @@ app.use(express.urlencoded({
     extended: true
 }));
 
-
 app.use(session({
-
     secret: "joakim-private-admin-key",
-
     resave: false,
-
     saveUninitialized: false
-
 }));
 
-
-// Gjør Express klar for Render proxy
-app.set("trust proxy", true);
-
-
-// Public folder
 app.use(express.static(
     path.join(__dirname, "public")
 ));
 
 
-
-
-// ==========================
-// VISITOR SYSTEM
-// ==========================
-
+// =======================
+// Visits JSON
+// =======================
 
 const visitsFile = path.join(
     __dirname,
@@ -53,10 +41,9 @@ const visitsFile = path.join(
 );
 
 
+function getVisits() {
 
-function getVisits(){
-
-    if(!fs.existsSync(visitsFile)){
+    if (!fs.existsSync(visitsFile)) {
 
         fs.writeFileSync(
             visitsFile,
@@ -67,49 +54,47 @@ function getVisits(){
 
 
     return JSON.parse(
-        fs.readFileSync(visitsFile)
+        fs.readFileSync(visitsFile, "utf8")
     );
 
 }
 
 
 
-
-function saveVisits(data){
+function saveVisits(data) {
 
     fs.writeFileSync(
-
         visitsFile,
-
-        JSON.stringify(
-            data,
-            null,
-            4
-        )
-
+        JSON.stringify(data, null, 4)
     );
 
 }
 
 
 
+// =======================
+// Visitor Tracking
+// =======================
 
-// Registrerer besøk på hovedside
-
-app.use((req,res,next)=>{
+app.use((req, res, next) => {
 
 
-    if(req.path === "/" || req.path === "/index.html"){
+    // Ikke registrer admin/api/filer
+    if (
+        req.path !== "/admin" &&
+        !req.path.startsWith("/api") &&
+        !req.path.includes(".")
+    ) {
 
 
         let ip =
-        req.headers["x-forwarded-for"]?.split(",")[0]
-        ||
-        req.ip;
+            req.headers["x-forwarded-for"]?.split(",")[0]
+            ||
+            req.socket.remoteAddress;
 
 
-        // fjerner IPv6 format
-        ip = ip.replace("::ffff:","");
+
+        ip = ip.replace("::ffff:", "");
 
 
 
@@ -124,13 +109,11 @@ app.use((req,res,next)=>{
 
 
         const now =
-        new Date().toLocaleString(
-            "no-NO"
-        );
+            new Date().toLocaleString("no-NO");
 
 
 
-        if(visitor){
+        if (visitor) {
 
 
             visitor.visits++;
@@ -138,9 +121,7 @@ app.use((req,res,next)=>{
             visitor.lastVisit = now;
 
 
-        }
-
-        else{
+        } else {
 
 
             visits.push({
@@ -177,51 +158,39 @@ app.use((req,res,next)=>{
 
 
 
+// =======================
+// Admin Login
+// =======================
 
 
+app.get("/admin", (req, res) => {
 
 
-// ==========================
-// ADMIN LOGIN
-// ==========================
-
-
-
-app.get("/admin",(req,res)=>{
-
-
-    if(req.session.loggedIn){
+    if (req.session.loggedIn) {
 
 
         res.sendFile(
-
             path.join(
                 __dirname,
                 "public",
                 "admin.html"
             )
-
         );
 
 
-    }
-
-    else{
+    } else {
 
 
         res.sendFile(
-
             path.join(
                 __dirname,
                 "public",
                 "login.html"
             )
-
         );
 
 
     }
-
 
 });
 
@@ -229,17 +198,14 @@ app.get("/admin",(req,res)=>{
 
 
 
+app.post("/login", (req, res) => {
 
 
-app.post("/login",(req,res)=>{
-
-
-    const password =
-    req.body.password;
+    const password = req.body.password;
 
 
 
-    if(password === "Joakim2026"){
+    if (password === "Joakim2026") {
 
 
         req.session.loggedIn = true;
@@ -248,41 +214,38 @@ app.post("/login",(req,res)=>{
         res.redirect("/admin");
 
 
-    }
-
-    else{
+    } else {
 
 
         res.send(
-
             "<h1>Feil passord</h1>"
-
         );
 
 
     }
-
 
 });
 
 
 
 
+// =======================
+// API til Admin Dashboard
+// =======================
 
 
-
-// Henter visitor-data til admin
-
-app.get("/api/visits",(req,res)=>{
+app.get("/api/visits", (req, res) => {
 
 
-    if(!req.session.loggedIn){
+    if (!req.session.loggedIn) {
+
 
         return res.status(403).json({
 
-            error:"Access denied"
+            error: "Access denied"
 
         });
+
 
     }
 
@@ -297,21 +260,14 @@ app.get("/api/visits",(req,res)=>{
 
 
 
+// =======================
+// Start Server
+// =======================
 
-
-
-
-// ==========================
-// START SERVER
-// ==========================
-
-
-app.listen(PORT,()=>{
-
+app.listen(PORT, () => {
 
     console.log(
         `Server running on port ${PORT}`
     );
-
 
 });
