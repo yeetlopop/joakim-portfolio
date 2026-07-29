@@ -1,144 +1,176 @@
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
+const session = require("express-session");
 
 const app = express();
 
-const PORT = 3000;
-
-const visitorFile = path.join(__dirname, "data", "visitors.json");
+const PORT = process.env.PORT || 3000;
 
 
-// -------------------------
-// Setup
-// -------------------------
+// ==========================
+// MIDDLEWARE
+// ==========================
 
-// Lag data-mappe hvis den ikke finnes
-if (!fs.existsSync(path.join(__dirname, "data"))) {
-    fs.mkdirSync(path.join(__dirname, "data"));
-}
+app.use(express.json());
 
-
-// Lag JSON-fil hvis den ikke finnes
-if (!fs.existsSync(visitorFile)) {
-    fs.writeFileSync(visitorFile, "[]");
-}
-
-
-// Ikke la express laste index automatisk
-app.use(express.static(path.join(__dirname, "public"), {
-    index: false
+app.use(express.urlencoded({
+    extended: true
 }));
 
 
+app.use(session({
+
+    secret: "joakim-private-admin-key",
+
+    resave: false,
+
+    saveUninitialized: false
+
+}));
 
 
-// -------------------------
-// Visitor system
-// -------------------------
-
-function registerVisitor(req) {
+// Gjør Express klar for Render proxy
+app.set("trust proxy", true);
 
 
-    const ip =
-        req.headers["x-forwarded-for"] ||
-        req.socket.remoteAddress;
-
-
-
-    const browser =
-        req.headers["user-agent"];
-
-
-
-    const currentTime =
-        new Date().toLocaleString("no-NO");
+// Public folder
+app.use(express.static(
+    path.join(__dirname, "public")
+));
 
 
 
-    let visitors =
-        JSON.parse(
-            fs.readFileSync(visitorFile, "utf8")
+
+// ==========================
+// VISITOR SYSTEM
+// ==========================
+
+
+const visitsFile = path.join(
+    __dirname,
+    "visits.json"
+);
+
+
+
+function getVisits(){
+
+    if(!fs.existsSync(visitsFile)){
+
+        fs.writeFileSync(
+            visitsFile,
+            "[]"
+        );
+
+    }
+
+
+    return JSON.parse(
+        fs.readFileSync(visitsFile)
+    );
+
+}
+
+
+
+
+function saveVisits(data){
+
+    fs.writeFileSync(
+
+        visitsFile,
+
+        JSON.stringify(
+            data,
+            null,
+            4
+        )
+
+    );
+
+}
+
+
+
+
+// Registrerer besøk på hovedside
+
+app.use((req,res,next)=>{
+
+
+    if(req.path === "/" || req.path === "/index.html"){
+
+
+        let ip =
+        req.headers["x-forwarded-for"]?.split(",")[0]
+        ||
+        req.ip;
+
+
+        // fjerner IPv6 format
+        ip = ip.replace("::ffff:","");
+
+
+
+        const visits = getVisits();
+
+
+
+        let visitor = visits.find(
+            v => v.ip === ip
         );
 
 
 
-    const existingVisitor =
-        visitors.find(
-            visitor => visitor.ip === ip
+        const now =
+        new Date().toLocaleString(
+            "no-NO"
         );
 
 
 
-    if (existingVisitor) {
+        if(visitor){
 
 
-        existingVisitor.visits += 1;
+            visitor.visits++;
 
-        existingVisitor.lastVisit = currentTime;
-
-        existingVisitor.browser = browser;
+            visitor.lastVisit = now;
 
 
-    } else {
+        }
+
+        else{
 
 
-        visitors.push({
+            visits.push({
 
-            ip: ip,
+                ip: ip,
 
-            visits: 1,
+                visits: 1,
 
-            firstVisit: currentTime,
+                firstVisit: now,
 
-            lastVisit: currentTime,
+                lastVisit: now,
 
-            browser: browser
+                browser:
+                req.headers["user-agent"]
 
-        });
+            });
+
+
+        }
+
+
+
+        saveVisits(visits);
 
 
     }
 
 
 
-    fs.writeFileSync(
-        visitorFile,
-        JSON.stringify(
-            visitors,
-            null,
-            4
-        )
-    );
-
-
-    console.log("New visit:");
-    console.log(ip);
-
-}
-
-
-
-
-
-// -------------------------
-// Main website
-// -------------------------
-
-app.get("/", (req, res) => {
-
-
-    registerVisitor(req);
-
-
-
-    res.sendFile(
-        path.join(
-            __dirname,
-            "public",
-            "index.html"
-        )
-    );
+    next();
 
 
 });
@@ -148,171 +180,87 @@ app.get("/", (req, res) => {
 
 
 
-// -------------------------
-// Admin page
-// -------------------------
 
-app.get("/admin", (req, res) => {
+// ==========================
+// ADMIN LOGIN
+// ==========================
 
 
-    let visitors =
-        JSON.parse(
-            fs.readFileSync(visitorFile, "utf8")
+
+app.get("/admin",(req,res)=>{
+
+
+    if(req.session.loggedIn){
+
+
+        res.sendFile(
+
+            path.join(
+                __dirname,
+                "public",
+                "admin.html"
+            )
+
         );
 
 
+    }
 
-    let html = `
-
-<!DOCTYPE html>
-
-<html>
-
-<head>
-
-<title>
-Visitor Dashboard
-</title>
+    else{
 
 
-<style>
+        res.sendFile(
 
-body {
+            path.join(
+                __dirname,
+                "public",
+                "login.html"
+            )
 
-    font-family: Arial;
-    background:#080808;
-    color:white;
-    padding:40px;
-
-}
-
-
-h1 {
-
-    color:#a78bfa;
-
-}
+        );
 
 
-table {
-
-    width:100%;
-    border-collapse:collapse;
-    background:white;
-    color:black;
-
-}
-
-
-th, td {
-
-    padding:15px;
-    border:1px solid #ccc;
-
-}
-
-
-</style>
-
-
-</head>
-
-
-<body>
-
-
-<h1>
-Visitor Dashboard
-</h1>
-
-
-
-<table>
-
-
-<tr>
-
-<th>
-IP
-</th>
-
-<th>
-Visits
-</th>
-
-<th>
-First Visit
-</th>
-
-<th>
-Last Visit
-</th>
-
-<th>
-Browser
-</th>
-
-</tr>
-
-`;
-
-
-
-visitors.forEach(visitor => {
-
-
-html += `
-
-<tr>
-
-<td>
-${visitor.ip}
-</td>
-
-
-<td>
-${visitor.visits}
-</td>
-
-
-<td>
-${visitor.firstVisit}
-</td>
-
-
-<td>
-${visitor.lastVisit}
-</td>
-
-
-<td>
-${visitor.browser}
-</td>
-
-
-</tr>
-
-`;
+    }
 
 
 });
 
 
 
-html += `
-
-</table>
-
-
-</body>
-
-</html>
-
-`;
 
 
 
-res.send(html);
+
+app.post("/login",(req,res)=>{
+
+
+    const password =
+    req.body.password;
+
+
+
+    if(password === "Joakim2026"){
+
+
+        req.session.loggedIn = true;
+
+
+        res.redirect("/admin");
+
+
+    }
+
+    else{
+
+
+        res.send(
+
+            "<h1>Feil passord</h1>"
+
+        );
+
+
+    }
 
 
 });
@@ -323,15 +271,46 @@ res.send(html);
 
 
 
-// -------------------------
-// Start server
-// -------------------------
+// Henter visitor-data til admin
 
-app.listen(PORT, "0.0.0.0", () => {
+app.get("/api/visits",(req,res)=>{
+
+
+    if(!req.session.loggedIn){
+
+        return res.status(403).json({
+
+            error:"Access denied"
+
+        });
+
+    }
+
+
+
+    res.json(
+        getVisits()
+    );
+
+
+});
+
+
+
+
+
+
+
+// ==========================
+// START SERVER
+// ==========================
+
+
+app.listen(PORT,()=>{
 
 
     console.log(
-        `Server running at http://localhost:${PORT}`
+        `Server running on port ${PORT}`
     );
 
 

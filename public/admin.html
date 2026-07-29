@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="no">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Visitor Dashboard</title>
+
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+        body {
+
+            font-family: Arial, sans-serif;
+
+            min-height: 100vh;
+
+            background:
+            linear-gradient(135deg, #350456, #994ade);
+
+            color: white;
+
+            padding: 40px;
+
+        }
+
+
+
+        .dashboard {
+
+
+            max-width: 1200px;
+
+            margin: auto;
+
+            background:
+            rgba(0,0,0,0.55);
+
+            backdrop-filter: blur(15px);
+
+            border-radius: 25px;
+
+            padding: 40px;
+
+            box-shadow:
+            0 0 40px rgba(0,0,0,0.5);
+
+
+        }
+
+
+
+        h1 {
+
+            text-align:center;
+
+            font-size: 3rem;
+
+            margin-bottom: 10px;
+
+        }
+
+
+
+        .subtitle {
+
+            text-align:center;
+
+            color:#ddd;
+
+            margin-bottom:40px;
+
+        }
+
+
+
+        .card {
+
+
+            background:
+            rgba(255,255,255,0.08);
+
+            border-radius:20px;
+
+            padding:25px;
+
+            margin-bottom:25px;
+
+            transition:0.3s;
+
+
+        }
+
+
+
+        .card:hover {
+
+            transform:translateY(-5px);
+
+            box-shadow:
+            0 0 25px #994ade;
+
+        }
+
+
+
+
+        table {
+
+            width:100%;
+
+            border-collapse:collapse;
+
+        }
+
+
+
+        th {
+
+            background:#350456;
+
+            padding:15px;
+
+            text-align:left;
+
+        }
+
+
+
+        td {
+
+            padding:15px;
+
+            border-bottom:
+            1px solid rgba(255,255,255,0.2);
+
+        }
+
+
+
+        tr:hover {
+
+            background:
+            rgba(255,255,255,0.1);
+
+        }
+
+
+
+        .back {
+
+
+            display:block;
+
+            width:max-content;
+
+            margin:30px auto 0;
+
+
+            padding:15px 30px;
+
+
+            background:#994ade;
+
+
+            color:white;
+
+
+            text-decoration:none;
+
+
+            border-radius:30px;
+
+
+            transition:0.3s;
+
+
+        }
+
+
+
+        .back:hover {
+
+
+            background:#fa0afa;
+
+            transform:scale(1.05);
+
+
+        }
+
+
+
+
+        @media(max-width:800px){
+
+
+            body{
+
+                padding:15px;
+
+            }
+
+
+            table{
+
+                font-size:12px;
+
+            }
+
+
+            th,td{
+
+                padding:8px;
+
+            }
+
+
+            h1{
+
+                font-size:2rem;
+
+            }
+
+        }
+
+
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="dashboard">
+
+
+<h1>🚀 Visitor Dashboard</h1>
+
+<p class="subtitle">
+Private administrator panel
+</p>
+
+
+
+<div class="card">
+
+
+<table>
+
+
+<thead>
+
+<tr>
+
+<th>IP</th>
+
+<th>Visits</th>
+
+<th>First Visit</th>
+
+<th>Last Visit</th>
+
+<th>Browser</th>
+
+
+</tr>
+
+</thead>
+
+
+<tbody id="visitorTable">
+
+
+</tbody>
+
+
+</table>
+
+
+</div>
+
+
+
+<a href="/" class="back">
+← Back to website
+</a>
+
+
+
+</div>
+
+
+
+
+
+<script>
+
+
+async function loadVisitors(){
+
+
+    try {
+
+
+        const response =
+        await fetch("/api/visits");
+
+
+        const visitors =
+        await response.json();
+
+
+
+        const table =
+        document.getElementById(
+            "visitorTable"
+        );
+
+
+
+        table.innerHTML = "";
+
+
+
+        visitors.forEach(visitor => {
+
+
+            const row =
+            document.createElement("tr");
+
+
+
+            row.innerHTML = `
+
+            <td>${visitor.ip}</td>
+
+            <td>${visitor.visits}</td>
+
+            <td>${visitor.firstVisit}</td>
+
+            <td>${visitor.lastVisit}</td>
+
+            <td>${visitor.browser}</td>
+
+            `;
+
+
+
+            table.appendChild(row);
+
+
+
+        });
+
+
+
+    }
+
+    catch(error){
+
+
+        console.log(
+            "Could not load visitors",
+            error
+        );
+
+
+    }
+
+
+}
+
+
+
+loadVisitors();
+
+
+</script>
+
+
+</body>
+
+</html>
