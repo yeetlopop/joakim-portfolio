@@ -20,15 +20,17 @@ app.use(express.urlencoded({
     extended: true
 }));
 
+
 app.use(session({
+
     secret: "joakim-private-admin-key",
+
     resave: false,
+
     saveUninitialized: false
+
 }));
 
-app.use(express.static(
-    path.join(__dirname, "public")
-));
 
 
 // =======================
@@ -39,6 +41,7 @@ const visitsFile = path.join(
     __dirname,
     "visits.json"
 );
+
 
 
 function getVisits() {
@@ -64,27 +67,31 @@ function getVisits() {
 function saveVisits(data) {
 
     fs.writeFileSync(
+
         visitsFile,
-        JSON.stringify(data, null, 4)
+
+        JSON.stringify(
+            data,
+            null,
+            4
+        )
+
     );
 
 }
 
 
 
+
 // =======================
 // Visitor Tracking
 // =======================
+// Registrerer KUN hovedsiden
 
 app.use((req, res, next) => {
 
 
-    // Ikke registrer admin/api/filer
-    if (
-        req.path !== "/admin" &&
-        !req.path.startsWith("/api") &&
-        !req.path.includes(".")
-    ) {
+    if (req.path === "/") {
 
 
         let ip =
@@ -158,6 +165,19 @@ app.use((req, res, next) => {
 
 
 
+
+
+// =======================
+// Public files
+// =======================
+
+app.use(express.static(
+    path.join(__dirname, "public")
+));
+
+
+
+
 // =======================
 // Admin Login
 // =======================
@@ -170,11 +190,13 @@ app.get("/admin", (req, res) => {
 
 
         res.sendFile(
+
             path.join(
                 __dirname,
                 "public",
                 "admin.html"
             )
+
         );
 
 
@@ -182,15 +204,18 @@ app.get("/admin", (req, res) => {
 
 
         res.sendFile(
+
             path.join(
                 __dirname,
                 "public",
                 "login.html"
             )
+
         );
 
 
     }
+
 
 });
 
@@ -201,7 +226,8 @@ app.get("/admin", (req, res) => {
 app.post("/login", (req, res) => {
 
 
-    const password = req.body.password;
+    const password =
+    req.body.password;
 
 
 
@@ -224,13 +250,16 @@ app.post("/login", (req, res) => {
 
     }
 
+
 });
 
 
 
 
+
+
 // =======================
-// API til Admin Dashboard
+// Visitor API
 // =======================
 
 
@@ -260,14 +289,19 @@ app.get("/api/visits", (req, res) => {
 
 
 
+
+
 // =======================
-// Start Server
+// Start server
 // =======================
 
+
 app.listen(PORT, () => {
+
 
     console.log(
         `Server running on port ${PORT}`
     );
+
 
 });
